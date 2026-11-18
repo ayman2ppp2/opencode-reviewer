@@ -2,14 +2,21 @@
 
 ## Evidence recorded during implementation
 
-- `bun run check` passed typechecking and 76 tests before bounded import context was added. The final test count is recorded below after the release check.
+- `bun run check` passed typechecking and all 80 tests, including symlink exclusion and interrupted-publication regressions.
 - `bun run verify:isolation` exercised the actual pinned OpenCode CLI inside the read-only non-root container against a local inference fixture.
 - The isolation probe observed UID 1000, no inherited `GH_TOKEN`, a read-only application directory, and no external routing from the engine network.
 - A real containerized request reached the explicitly free OpenCode model and returned a free-quota error. No paid fallback occurred.
 - `/tmp/opencode/actionlint` validated the workflow files locally.
 - Initial GitHub CI passed at https://github.com/ayman2ppp2/opencode-reviewer/actions/runs/44266681827.
+- The three-job Actions pipeline completed at https://github.com/ayman2ppp2/opencode-reviewer/actions/runs/44267720629. The bot posted a blocked review, not a successful AI analysis.
+- `bun scripts/verify-publisher.ts --publish` posted a clearly labelled deterministic fixture through the actual publisher. Its second identical call returned `duplicate`.
+- The real inline anchor and single-line suggestion are visible at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#discussion_r4611151178. This finding was fixture data, not model output.
+- The deterministic summary and persisted checkpoint are visible at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#issuecomment-6973473774.
+- Independent security verification confirmed changed-file and import-context symlink rejection against immutable Git-tree modes. It also checked parent symlinks, submodules, truncated trees, path traversal, caching, and request bounds.
 
 The local inference fixture proves CLI integration and routing. It does not prove review quality or free-provider availability.
+
+Successful real-model analysis remains blocked by free access availability. No paid provider or account credit was used. The quota is an external prerequisite, not a passing implementation test.
 
 ## Repeat local verification
 

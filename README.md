@@ -31,7 +31,7 @@ Read the current [OpenCode privacy terms](https://opencode.ai/docs/zen#privacy) 
 Use a full reviewer release commit SHA. Preview the generated caller first:
 
 ```sh
-bun run reviewer onboard --repo OWNER/REPOSITORY --ref FULL_REVIEWER_COMMIT_SHA
+bun run reviewer onboard --repo OWNER/REPOSITORY --ref "$(git rev-parse HEAD)"
 ```
 
 Add `--apply` to open an installation PR. Existing conflicting workflows are never overwritten. Repeat for each selected repository. An existing matching installation is a no-op.

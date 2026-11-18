@@ -47,8 +47,12 @@ async function output(key: string, value: string) {
 async function infer(bundle: SourceBundle): Promise<ReviewResult> {
   if (!bundle.files.length) return blockedResult('No reviewable source files were supplied. No clean-review conclusion is available.');
   try { return validateProposal(bundle, await runEngine(bundle)); }
-  catch {
-    return blockedResult('Free OpenCode inference is unavailable, exhausted, timed out, or returned invalid output. No paid fallback was attempted. No clean-review conclusion is available.');
+  catch (error) {
+    const known = ['Free model quota exhausted; no paid fallback', 'Free model access denied; no paid fallback', 'OpenCode inference failed; no paid fallback', 'Process deadline exceeded', 'Process output limit exceeded', 'Unexpected tool use in read-only session'];
+    const reason = error instanceof Error && known.includes(error.message) ? error.message
+      : error instanceof z.ZodError || error instanceof SyntaxError ? 'The model returned invalid structured output'
+      : 'The isolated OpenCode runtime could not complete';
+    return blockedResult(`${reason}. No paid fallback was attempted. No clean-review conclusion is available.`);
   }
 }
 
