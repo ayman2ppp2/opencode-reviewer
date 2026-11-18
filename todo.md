@@ -9,6 +9,6 @@
 - [x] M6. Implement single-line suggestions and authorized conversation commands. Offline permission and thread-destination tests pass.
 - [x] M7. Implement preview-first repository onboarding and documentation. No unrelated repositories installed.
 - [x] Run independent security review and resolve accepted findings. Retry, question-mode suppression, and symlink findings have regression tests.
-- [ ] Update deployed runtime pins to the security-fixed revision and verify the final Actions run.
+- [x] Update deployed runtime pins to security-fixed revision `71c8d2a3a7b8353f6345ac16dc4f8e6572a7dcb7`. All jobs passed in Actions run `44269613623`; the bot correctly reports exhausted free quota.
 
 M8 remains an expansion roadmap. Do not claim commercial product parity.

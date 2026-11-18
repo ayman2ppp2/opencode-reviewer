@@ -9,9 +9,12 @@
 - `/tmp/opencode/actionlint` validated the workflow files locally.
 - Initial GitHub CI passed at https://github.com/ayman2ppp2/opencode-reviewer/actions/runs/44266681827.
 - The three-job Actions pipeline completed at https://github.com/ayman2ppp2/opencode-reviewer/actions/runs/44267720629. The bot posted a blocked review, not a successful AI analysis.
+- The security-fixed runtime at `71c8d2a3a7b8353f6345ac16dc4f8e6572a7dcb7` completed all three jobs at https://github.com/ayman2ppp2/opencode-reviewer/actions/runs/44269613623. All deployed jobs pin that revision.
+- The bot's live summary explicitly reports `Free model quota exhausted; no paid fallback` at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#issuecomment-6973304446. Failed attempts remain retryable and do not advance a successful checkpoint.
 - `bun scripts/verify-publisher.ts --publish` posted a clearly labelled deterministic fixture through the actual publisher. Its second identical call returned `duplicate`.
 - The real inline anchor and single-line suggestion are visible at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#discussion_r4611151178. This finding was fixture data, not model output.
 - The deterministic summary and persisted checkpoint are visible at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#issuecomment-6973473774.
+- `bun scripts/verify-publisher.ts --thread --publish` posted a clearly labelled native-thread reply at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#discussion_r4611204728. Its second call returned `duplicate`.
 - Independent security verification confirmed changed-file and import-context symlink rejection against immutable Git-tree modes. It also checked parent symlinks, submodules, truncated trees, path traversal, caching, and request bounds.
 
 The local inference fixture proves CLI integration and routing. It does not prove review quality or free-provider availability.
