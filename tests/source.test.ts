@@ -15,10 +15,36 @@ const contents = (text: string) => ({ type: 'file', encoding: 'base64', size: Bu
 
 function fixture(options: { files?: unknown[]; config?: unknown; source?: unknown; pr?: unknown } = {}) {
   const calls: string[] = [];
+  const names = (options.files ?? [file]).flatMap((v) => typeof v === 'object' && v !== null && 'filename' in v && typeof v.filename === 'string' ? [v.filename] : []);
+  names.push('src/helper.ts');
+  const directories = new Map<string, string>([['', 'c'.repeat(40)]]);
+  for (const name of names) {
+    const parts = name.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      const dir = parts.slice(0, i).join('/');
+      if (!directories.has(dir)) directories.set(dir, (directories.size + 10).toString(16).padStart(40, '0'));
+    }
+  }
   const client: GitHubClient = {
     async request(method, path) {
       expect(method).toBe('GET');
       calls.push(path);
+      if (path.endsWith(`/git/commits/${headSha}`)) return { tree: { sha: 'c'.repeat(40) } };
+      if (path.includes('/git/trees/')) {
+        const directory = [...directories].find(([, sha]) => path.endsWith(sha))?.[0];
+        if (directory === undefined) throw new Error('Unknown tree');
+        const entries = new Map<string, { path: string; mode: string; type: string; sha: string }>();
+        for (const name of names) {
+          const prefix = directory ? `${directory}/` : '';
+          if (!name.startsWith(prefix)) continue;
+          const rest = name.slice(prefix.length);
+          const child = rest.split('/')[0];
+          if (!child) continue;
+          const childDir = directory ? `${directory}/${child}` : child;
+          entries.set(child, { path: child, mode: rest.includes('/') ? '040000' : '100644', type: rest.includes('/') ? 'tree' : 'blob', sha: directories.get(childDir) ?? 'd'.repeat(40) });
+        }
+        return { truncated: false, tree: [...entries.values()] };
+      }
       if (path === '/repos/owner/repo/pulls/12') return options.pr ?? pull;
       if (path === `/repos/owner/repo/contents/.opencode-reviewer.yml?ref=${baseSha}`) {
         if (options.config === undefined) throw new GhApiError('Not found', 404);

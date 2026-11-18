@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resolveEgress, throughRelay, type Egress } from './egress';
 
 export const FREE_MODEL_ID = 'deepseek-v4.1-flash-free';
 const PriceSchema = z.object({ price: z.literal(0), cache: z.object({ read: z.literal(0) }).optional() });
@@ -19,7 +20,7 @@ export async function verifyFreeModel(fetcher: Fetcher = fetch): Promise<void> {
   if (!('cost' in model) || !model.cost) throw new Error('Free model pricing is unknown');
 }
 
-export function createGateway(options: { token: string; maxRequests?: number; fetcher?: Fetcher; verify?: () => Promise<void> }) {
+export function createGateway(options: { token: string; maxRequests?: number; fetcher?: Fetcher; verify?: () => Promise<void>; egress?: Egress }) {
   let requests = 0;
   return async (request: Request): Promise<Response> => {
     if (request.headers.get('x-reviewer-token') !== options.token) return new Response('Forbidden', { status: 403 });
@@ -32,19 +33,24 @@ export function createGateway(options: { token: string; maxRequests?: number; fe
       if (Buffer.byteLength(body) > 1500000) return new Response('Request too large', { status: 413 });
       const parsed = z.object({ model: z.literal(FREE_MODEL_ID), stream: z.boolean().optional() }).passthrough().safeParse(JSON.parse(body));
       if (!parsed.success) return new Response('Only the explicitly free model is allowed', { status: 403 });
-      await (options.verify ?? verifyFreeModel)();
       const headers = new Headers({ 'content-type': 'application/json' });
       for (const [name, value] of request.headers) {
         if (name === 'user-agent' || name.startsWith('x-opencode-') || name === 'x-anomaly-' || name === 'authorization') headers.set(name, value);
       }
       // Free-only isolated processes carry no Console key. Never forward a caller-supplied paid credential.
       headers.delete('authorization');
+      const egress = options.egress ?? { profile: 'direct' };
+      if (egress.profile !== 'direct') {
+        // The device verifies free pricing. Provider traffic must not escape through the runner.
+        return await throughRelay(egress, body, headers, options.fetcher);
+      }
+      await (options.verify ?? verifyFreeModel)();
       const response = await (options.fetcher ?? fetch)('https://opencode.ai/inference/openai/v1/chat/completions', {
         method: 'POST', headers, body, redirect: 'error', signal: AbortSignal.timeout(240000),
       });
       return new Response(response.body, { status: response.status, headers: { 'content-type': response.headers.get('content-type') ?? 'application/json' } });
     } catch {
-      return new Response('Free inference unavailable; no paid fallback', { status: 503 });
+      return Response.json({ error: { type: 'reviewer_gateway_unavailable', message: 'Selected inference route unavailable; no paid or alternate-network fallback' } }, { status: 503 });
     }
   };
 }
@@ -52,6 +58,6 @@ export function createGateway(options: { token: string; maxRequests?: number; fe
 if (import.meta.main) {
   const token = process.env.REVIEWER_GATEWAY_TOKEN;
   if (!token) throw new Error('Gateway token required');
-  const handler = createGateway({ token });
+  const handler = createGateway({ token, egress: resolveEgress(process.env) });
   Bun.serve({ port: 8080, hostname: '0.0.0.0', maxRequestBodySize: 1500000, idleTimeout: 255, fetch: handler });
 }

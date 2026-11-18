@@ -6,12 +6,30 @@ on:
         description: PR number for manual dispatch.
         type: string
         default: ''
+      egress_profile:
+        description: configured, direct, laptop, or android. Never switched automatically.
+        type: string
+        default: configured
+    secrets:
+      REVIEWER_LAPTOP_RELAY_URL:
+        required: false
+      REVIEWER_LAPTOP_RELAY_KEY:
+        required: false
+      REVIEWER_ANDROID_RELAY_URL:
+        required: false
+      REVIEWER_ANDROID_RELAY_KEY:
+        required: false
   workflow_dispatch:
     inputs:
       pr_number:
         description: PR number.
         type: string
         required: true
+      egress_profile:
+        description: Select one inference connection.
+        type: choice
+        default: configured
+        options: [configured, direct, laptop, android]
 
 permissions: {}
 
@@ -30,7 +48,7 @@ jobs:
       eligible: ${{ steps.prepare.outputs.eligible }}
     steps:
       - id: prepare
-        uses: ayman2ppp2/opencode-reviewer@24254b3e6c0e23a4e18caeaeaf8134878d2cd362
+        uses: ayman2ppp2/opencode-reviewer@256050c4e478d75b758c2719a84b7473e112d8e8
         with:
           phase: prepare
           pr_number: ${{ inputs.pr_number }}
@@ -55,9 +73,15 @@ jobs:
         with:
           name: reviewer-source
           path: ${{ runner.temp }}/reviewer-data
-      - uses: ayman2ppp2/opencode-reviewer@24254b3e6c0e23a4e18caeaeaf8134878d2cd362
+      - uses: ayman2ppp2/opencode-reviewer@256050c4e478d75b758c2719a84b7473e112d8e8
         with:
           phase: infer
+        env:
+          REVIEWER_EGRESS_PROFILE: ${{ inputs.egress_profile == 'configured' && (vars.REVIEWER_EGRESS_PROFILE || 'direct') || inputs.egress_profile }}
+          REVIEWER_LAPTOP_RELAY_URL: ${{ secrets.REVIEWER_LAPTOP_RELAY_URL }}
+          REVIEWER_LAPTOP_RELAY_KEY: ${{ secrets.REVIEWER_LAPTOP_RELAY_KEY }}
+          REVIEWER_ANDROID_RELAY_URL: ${{ secrets.REVIEWER_ANDROID_RELAY_URL }}
+          REVIEWER_ANDROID_RELAY_KEY: ${{ secrets.REVIEWER_ANDROID_RELAY_KEY }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: reviewer-result
@@ -81,7 +105,7 @@ jobs:
         with:
           name: reviewer-result
           path: ${{ runner.temp }}/reviewer-data
-      - uses: ayman2ppp2/opencode-reviewer@24254b3e6c0e23a4e18caeaeaf8134878d2cd362
+      - uses: ayman2ppp2/opencode-reviewer@256050c4e478d75b758c2719a84b7473e112d8e8
         with:
           phase: publish
         env:

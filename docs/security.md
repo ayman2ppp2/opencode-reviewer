@@ -2,6 +2,8 @@
 
 The preparation job uses read permissions and the GitHub API to collect source at exact commit SHAs. It never checks out the PR or runs its build scripts. Configuration comes from the base commit, not the PR head.
 
+Before retrieving changed files or related imports, it checks immutable Git-tree modes. Symlinks, submodules, and symlink directories are rejected even when the Contents API would dereference a link and report its target as a regular file. Tree inspection is bounded and fails closed.
+
 The inference job has no GitHub write permissions. It runs OpenCode in a non-root, read-only Docker container with a clean home, denied tools, no inherited credentials, no host sockets, and a read-only prompt attachment. Project configuration and instructions are supplied only as data, never as executable files. Shell, edits, web tools, MCP tools, and subagents are denied.
 
 The engine container uses an internal Docker network. Only a narrow gateway container has external network access. The gateway accepts one inference endpoint, the explicitly free model ID, and at most two requests per run. It verifies published zero input and output prices before each request. It strips authorization credentials and never follows redirects. The engine receives no provider API key.
@@ -19,3 +21,11 @@ Fork reviews require a maintainer command. The `pull_request_target` controller 
 Prompt injection can still persuade a model to produce incorrect findings. Isolation limits authority, not reasoning errors. Human review remains necessary.
 
 No paid credentials are forwarded to the engine or gateway. The runtime pins all reviewer and auxiliary sessions to the explicitly free model. If free pricing cannot be verified, inference stops. This is not a promise that a provider's free offering lasts forever.
+
+## Device relay boundary
+
+When a device profile is selected, only the gateway container receives the relay URL and key, through a private env file. The OpenCode worker container receives only its ephemeral gateway token. Worker configuration, the prompt bundle, artifacts, and logs never contain relay credentials.
+
+The relay binds to loopback and is exposed only through a temporary HTTPS tunnel. It authenticates with a 256-bit key read from an owner-only mode-0600 file. It accepts one completion route plus a health check. It rejects redirects, arbitrary URLs, paid models, oversized bodies, duplicate JSON keys, and any provider or proxy credential fields. It forwards only an allowlist of headers. It verifies zero input and output pricing from the model catalog before each request.
+
+The upstream body is buffered into a bounded JSON envelope because Quick Tunnel does not stream SSE. A 429 is returned inside the envelope and never retried. A missing device, timeout, or relay failure produces a blocked review. The routing profile is explicit and is never changed automatically. See [device relay setup](device-relay.md).

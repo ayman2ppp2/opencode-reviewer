@@ -31,7 +31,7 @@ Read the current [OpenCode privacy terms](https://opencode.ai/docs/zen#privacy) 
 Use a full reviewer release commit SHA. Preview the generated caller first:
 
 ```sh
-bun run reviewer onboard --repo OWNER/REPOSITORY --ref FULL_REVIEWER_COMMIT_SHA
+bun run reviewer onboard --repo OWNER/REPOSITORY --ref "$(git rev-parse HEAD)"
 ```
 
 Add `--apply` to open an installation PR. Existing conflicting workflows are never overwritten. Repeat for each selected repository. An existing matching installation is a no-op.
@@ -61,5 +61,15 @@ The reviewer validates source citations and inline anchors. It cannot prove a mo
 Review state prevents duplicate findings and recovers after interrupted publication. A completely reviewed, unchanged revision and configuration skip another inference call unless you request a full review. Changed revisions use the bounded whole PR diff. Dependency-aware change-only analysis is not yet implemented. Previously posted findings remain historical unless a human resolves them.
 
 Large files, binary files, missing patches, sensitive paths, and files over configured limits are omitted and reported. It does not run tests or claim that tests passed. Suggestions replace one source line and require human review.
+
+## Route inference through your own device
+
+If the free endpoint rejects GitHub's network, you can send model requests through a Linux laptop or an Android phone. A 429 may also be an account-wide quota, so this is an experiment rather than a guaranteed fix.
+
+```sh
+python3 device/start.py --profile laptop --repo OWNER/REPOSITORY --register
+```
+
+There is no automatic fallback. A quota error, timeout, or offline device blocks the review and never switches connection. See the [device relay guide](docs/device-relay.md).
 
 See [security boundaries](docs/security.md), [feature status](docs/features.md), and [implementation plan](docs/implementation-plan.md).

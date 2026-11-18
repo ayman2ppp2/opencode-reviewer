@@ -4,6 +4,7 @@ import { BundleSchema, ConfigSchema, PathSchema, RepoSchema, RequestSchema, ShaS
   type Config, type GitHubClient, type ReviewRequest, type SourceBundle } from './domain';
 import { GhApiError } from './github';
 import { posix } from 'node:path';
+import { GitTreeGuard } from './git-tree';
 
 const PullSchema = z.object({
   number: z.number().int().positive(), title: z.string(), body: z.string().nullable(), draft: z.boolean(),
@@ -113,6 +114,7 @@ export async function collectSource(client: GitHubClient, request: ReviewRequest
   const globs = [...sensitivePatterns, ...config.exclude].map((pattern) => new Bun.Glob(pattern));
   let bytes = 0;
   const seen = new Set<string>();
+  const tree = new GitTreeGuard(client, request.repo, request.headSha);
   for (const file of entries) {
     const omit = (reason: string) => bundle.omissions.push(`${file.filename}: ${reason}`.slice(0, 1000));
     if (!PathSchema.safeParse(file.filename).success || file.filename.split('/').some((part) => !part || /[%{}]/.test(part))) {
@@ -134,6 +136,7 @@ export async function collectSource(client: GitHubClient, request: ReviewRequest
     let content = '';
     if (file.status !== 'removed') {
       try {
+        if (!await tree.isRegularFile(file.filename)) { omit('not a regular Git blob; symlinks and submodules are excluded'); continue; }
         content = decodeContents(await client.request('GET', contentsPath(request, file.filename, request.headSha)),
           config.maxSourceBytes - bytes - patchBytes);
       } catch { omit('source unavailable, binary, invalid or over byte budget'); continue; }
@@ -157,6 +160,7 @@ export async function collectSource(client: GitHubClient, request: ReviewRequest
       if (seen.has(path) || globs.some((glob) => glob.match(path)) || attempts >= 15) continue;
       attempts++;
       try {
+        if (!await tree.isRegularFile(path)) continue;
         const content = decodeContents(await client.request('GET', contentsPath(request, path, request.headSha)), config.maxSourceBytes - bytes);
         bundle.context ??= [];
         bundle.context.push({ path, content });

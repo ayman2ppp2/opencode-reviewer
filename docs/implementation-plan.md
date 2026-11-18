@@ -1,6 +1,6 @@
 # Build a free OpenCode reviewer for GitHub repositories
 
-Status: proposed implementation plan. No reviewer code exists yet.
+Status: original planning record. Implementation progress and remaining gates are recorded in `todo.md` and `verification.md`.
 
 Execution amendment. The user selected OpenCode's own free models and authorized GitHub access through `gh`. The implementation uses the pinned OpenCode V2 CLI rather than the embedded SDK. Its clean-environment CLI and gateway routing were verified directly. Gemini is no longer a setup prerequisite. `opencode/deepseek-v4.1-flash-free` is the only allowed inference model. Free availability is checked before requests. See `verification.md` for execution evidence and remaining limitations.
 

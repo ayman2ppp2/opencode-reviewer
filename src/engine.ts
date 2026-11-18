@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { z } from 'zod';
 import { DEFAULT_MODEL, ProposalSchema, type Proposal, type SourceBundle, type ReviewResult } from './domain';
 import { runProcess } from './process';
+import { egressEnvironment, type Egress } from './egress';
 
 export function trustedConfig(gatewayURL: string, token: string) {
   return {
@@ -72,7 +73,7 @@ export function blockedResult(message: string): ReviewResult {
   return { status: 'blocked', summary: message, walkthrough: [], findings: [], rejected: [], model: DEFAULT_MODEL };
 }
 
-export async function runEngine(bundle: SourceBundle, options: { image?: string } = {}): Promise<Proposal> {
+export async function runEngine(bundle: SourceBundle, options: { image?: string; egress?: Egress } = {}): Promise<Proposal> {
   const id = randomBytes(8).toString('hex');
   const internal = `reviewer-internal-${id}`;
   const gateway = `reviewer-gateway-${id}`;
@@ -81,6 +82,8 @@ export async function runEngine(bundle: SourceBundle, options: { image?: string 
   const image = options.image ?? 'opencode-reviewer:local';
   const dir = await mkdtemp(join(tmpdir(), 'reviewer-input-'));
   await writeFile(join(dir, 'prompt.txt'), buildPrompt(bundle), { mode: 0o644 });
+  const envFile = join(dir, 'gateway.env');
+  await writeFile(envFile, egressEnvironment(options.egress ?? { profile: 'direct' }), { mode: 0o600 });
   const docker = async (...args: string[]) => {
     const result = await runProcess(['docker', ...args], { timeoutMs: (bundle.config.timeoutSeconds + 30) * 1000 });
     if (result.code) {
@@ -91,7 +94,7 @@ export async function runEngine(bundle: SourceBundle, options: { image?: string 
   };
   try {
     await docker('network', 'create', '--internal', internal);
-    await docker('create', '--name', gateway, '--network', internal, '--network-alias', 'gateway', '--read-only', '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--pids-limit=64', '--memory=256m', '--cpus=0.5', '-e', `REVIEWER_GATEWAY_TOKEN=${token}`, image, 'bun', 'src/gateway.ts');
+    await docker('create', '--name', gateway, '--network', internal, '--network-alias', 'gateway', '--read-only', '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--pids-limit=64', '--memory=256m', '--cpus=0.5', '--env-file', envFile, '-e', `REVIEWER_GATEWAY_TOKEN=${token}`, image, 'bun', 'src/gateway.ts');
     await docker('network', 'connect', 'bridge', gateway);
     await docker('start', gateway);
     const result = await docker('run', '--rm', '--name', worker, '--network', internal, '--read-only', '--tmpfs', '/tmp:rw,nosuid,size=256m', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--pids-limit=128', '--memory=1g', '--cpus=1', '-v', `${resolve(dir, 'prompt.txt')}:/input/prompt.txt:ro`, '-e', `REVIEWER_GATEWAY_TOKEN=${token}`, image, 'bun', 'src/engine-worker.ts');

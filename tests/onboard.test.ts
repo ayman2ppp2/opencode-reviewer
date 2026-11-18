@@ -80,15 +80,21 @@ describe('renderCaller', () => {
     expect(ConfigSchema.parse(config).model).toBe('opencode/deepseek-v4.1-flash-free');
   });
 
-  test('pins the central workflow and forwards only the manual input', () => {
+  test('pins the central workflow and forwards explicit device secrets, never all secrets', () => {
     const caller = parse(workflow);
     expect(caller.jobs.review.uses).toBe(`ayman2ppp2/opencode-reviewer/.github/workflows/review.yml@${ref}`);
-    expect(caller.jobs.review.with).toEqual({ pr_number: "${{ github.event.inputs.pr_number || '' }}" });
+    expect(caller.jobs.review.with).toEqual({ pr_number: "${{ github.event.inputs.pr_number || '' }}", egress_profile: "${{ github.event.inputs.egress_profile || 'configured' }}" });
     expect(caller.on.pull_request_target.types).toEqual(['opened', 'synchronize', 'reopened', 'ready_for_review']);
     expect(caller.on.issue_comment.types).toEqual(['created']);
     expect(caller.on.workflow_dispatch.inputs.pr_number.type).toBe('string');
     expect(caller.permissions).toEqual({ contents: 'read', 'pull-requests': 'write' });
-    expect(caller.jobs.review.secrets).toBeUndefined();
+    expect(caller.jobs.review.secrets).toEqual({
+      REVIEWER_LAPTOP_RELAY_URL: '${{ secrets.REVIEWER_LAPTOP_RELAY_URL }}',
+      REVIEWER_LAPTOP_RELAY_KEY: '${{ secrets.REVIEWER_LAPTOP_RELAY_KEY }}',
+      REVIEWER_ANDROID_RELAY_URL: '${{ secrets.REVIEWER_ANDROID_RELAY_URL }}',
+      REVIEWER_ANDROID_RELAY_KEY: '${{ secrets.REVIEWER_ANDROID_RELAY_KEY }}',
+    });
+    expect(workflow).not.toContain('secrets: inherit');
     expect(workflow).not.toContain('checkout');
   });
 

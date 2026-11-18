@@ -122,7 +122,7 @@ export async function updateControl(client: GitHubClient, request: ReviewRequest
   const next = state ?? initialState(request);
   if (action !== 'help') next.paused = action === 'pause';
   const body = summaryBody([SUMMARY_MARKER, `OpenCode reviewer is ${next.paused ? 'paused' : 'enabled'}.`,
-    'Commands: /opencode review, /opencode full, /opencode summary, /opencode pause, /opencode resume, /opencode help.',
+    'Commands: /opencode review, /opencode full, /opencode summary, /opencode ask QUESTION, /opencode pause, /opencode resume, /opencode help.',
     'Control update only. This is not a review or a clean-review conclusion.'], next);
   const summaryId = await writeSummary(client, request, commentId, body);
   return summaryId === null ? { status: 'superseded' } : { status: action, summaryId };
