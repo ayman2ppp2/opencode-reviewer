@@ -2,7 +2,7 @@
 
 ## Evidence recorded during implementation
 
-- `bun run check` passed typechecking and all 80 tests, including symlink exclusion and interrupted-publication regressions.
+- `bun run check` passed typechecking and all 86 tests. `python3 -B -m unittest discover -s device` passed all 25 relay tests. actionlint passed.
 - `bun run verify:isolation` exercised the actual pinned OpenCode CLI inside the read-only non-root container against a local inference fixture.
 - The isolation probe observed UID 1000, no inherited `GH_TOKEN`, a read-only application directory, and no external routing from the engine network.
 - A real containerized request reached the explicitly free OpenCode model and returned a free-quota error. No paid fallback occurred.
@@ -16,6 +16,8 @@
 - The deterministic summary and persisted checkpoint are visible at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#issuecomment-6973473774.
 - `bun scripts/verify-publisher.ts --thread --publish` posted a clearly labelled native-thread reply at https://github.com/ayman2ppp2/opencode-reviewer/pull/1#discussion_r4611204728. Its second call returned `duplicate`.
 - Independent security verification confirmed changed-file and import-context symlink rejection against immutable Git-tree modes. It also checked parent symlinks, submodules, truncated trees, path traversal, caching, and request bounds.
+- A real Cloudflare Quick Tunnel started from `device/start.py --profile laptop` and produced a public URL. Through that URL, `/health` returned 403 without the key and 200 with it. `timeout -s INT` stopped the relay and both child processes.
+- The buffered relay path was exercised with the real pinned OpenCode CLI against a local Python relay over HTTP. The gateway reconstructed SSE bytes from the versioned envelope. No provider call was made.
 
 The local inference fixture proves CLI integration and routing. It does not prove review quality or free-provider availability.
 
@@ -26,9 +28,12 @@ Successful real-model analysis remains blocked by free access availability. No p
 ```sh
 bun install --frozen-lockfile
 bun run check
+python3 -B -m unittest discover -s device -p 'test_*.py'
 bun run reviewer build
 bun run verify:isolation
 ```
+
+To verify the device relay without model calls, see [device relay setup](device-relay.md). No real provider request is needed to test routing, authentication, or response reconstruction.
 
 The pinned Docker build runtime is Bun 1.3.10. The checked-in lockfile is compatible with that version. OpenCode CLI is pinned to 2.3.0. Upgrading the runtime requires repeating the real CLI and isolation probes.
 

@@ -21,3 +21,11 @@ Fork reviews require a maintainer command. The `pull_request_target` controller 
 Prompt injection can still persuade a model to produce incorrect findings. Isolation limits authority, not reasoning errors. Human review remains necessary.
 
 No paid credentials are forwarded to the engine or gateway. The runtime pins all reviewer and auxiliary sessions to the explicitly free model. If free pricing cannot be verified, inference stops. This is not a promise that a provider's free offering lasts forever.
+
+## Device relay boundary
+
+When a device profile is selected, only the gateway container receives the relay URL and key, through a private env file. The OpenCode worker container receives only its ephemeral gateway token. Worker configuration, the prompt bundle, artifacts, and logs never contain relay credentials.
+
+The relay binds to loopback and is exposed only through a temporary HTTPS tunnel. It authenticates with a 256-bit key read from an owner-only mode-0600 file. It accepts one completion route plus a health check. It rejects redirects, arbitrary URLs, paid models, oversized bodies, duplicate JSON keys, and any provider or proxy credential fields. It forwards only an allowlist of headers. It verifies zero input and output pricing from the model catalog before each request.
+
+The upstream body is buffered into a bounded JSON envelope because Quick Tunnel does not stream SSE. A 429 is returned inside the envelope and never retried. A missing device, timeout, or relay failure produces a blocked review. The routing profile is explicit and is never changed automatically. See [device relay setup](device-relay.md).

@@ -62,4 +62,14 @@ Review state prevents duplicate findings and recovers after interrupted publicat
 
 Large files, binary files, missing patches, sensitive paths, and files over configured limits are omitted and reported. It does not run tests or claim that tests passed. Suggestions replace one source line and require human review.
 
+## Route inference through your own device
+
+If the free endpoint rejects GitHub's network, you can send model requests through a Linux laptop or an Android phone. A 429 may also be an account-wide quota, so this is an experiment rather than a guaranteed fix.
+
+```sh
+python3 device/start.py --profile laptop --repo OWNER/REPOSITORY --register
+```
+
+There is no automatic fallback. A quota error, timeout, or offline device blocks the review and never switches connection. See the [device relay guide](docs/device-relay.md).
+
 See [security boundaries](docs/security.md), [feature status](docs/features.md), and [implementation plan](docs/implementation-plan.md).

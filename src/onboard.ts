@@ -29,6 +29,11 @@ on:
         description: Pull request number
         required: true
         type: string
+      egress_profile:
+        description: Select one inference connection.
+        type: choice
+        default: configured
+        options: [configured, direct, laptop, android]
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -45,6 +50,12 @@ jobs:
     uses: ${reviewerRepo}/.github/workflows/review.yml@${ref}
     with:
       pr_number: \${{ github.event.inputs.pr_number || '' }}
+      egress_profile: \${{ github.event.inputs.egress_profile || 'configured' }}
+    secrets:
+      REVIEWER_LAPTOP_RELAY_URL: \${{ secrets.REVIEWER_LAPTOP_RELAY_URL }}
+      REVIEWER_LAPTOP_RELAY_KEY: \${{ secrets.REVIEWER_LAPTOP_RELAY_KEY }}
+      REVIEWER_ANDROID_RELAY_URL: \${{ secrets.REVIEWER_ANDROID_RELAY_URL }}
+      REVIEWER_ANDROID_RELAY_KEY: \${{ secrets.REVIEWER_ANDROID_RELAY_KEY }}
 `;
 }
 
@@ -133,7 +144,7 @@ export async function onboard(
     title: 'ci: add pinned OpenCode reviewer',
     head: branch,
     base,
-    body: 'Add the shared OpenCode reviewer pinned to a full commit SHA. Uses only opencode/deepseek-v4.1-flash-free with no paid fallback. Review this workflow before merging. No repository secrets are required.',
+    body: 'Add the shared OpenCode reviewer pinned to a full commit SHA. Uses only opencode/deepseek-v4.1-flash-free with no paid fallback. Review this workflow before merging. Direct mode requires no repository secrets. Optional device relays use explicitly forwarded secrets, never secrets: inherit.',
   }));
   return { status: 'created', workflow, url: pull.html_url };
 }

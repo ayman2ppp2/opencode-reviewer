@@ -13,3 +13,8 @@ jobs:
   review:
     if: github.event_name != 'issue_comment' || github.event.issue.pull_request
     uses: ./.github/workflows/review.yml
+    secrets:
+      REVIEWER_LAPTOP_RELAY_URL: ${{ secrets.REVIEWER_LAPTOP_RELAY_URL }}
+      REVIEWER_LAPTOP_RELAY_KEY: ${{ secrets.REVIEWER_LAPTOP_RELAY_KEY }}
+      REVIEWER_ANDROID_RELAY_URL: ${{ secrets.REVIEWER_ANDROID_RELAY_URL }}
+      REVIEWER_ANDROID_RELAY_KEY: ${{ secrets.REVIEWER_ANDROID_RELAY_KEY }}

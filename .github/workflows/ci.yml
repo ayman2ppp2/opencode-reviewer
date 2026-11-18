@@ -17,3 +17,4 @@ jobs:
           bun-version: '1.3.10'
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - run: python3 -m unittest discover -s device -p 'test_*.py'
