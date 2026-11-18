@@ -48,7 +48,7 @@ jobs:
       eligible: ${{ steps.prepare.outputs.eligible }}
     steps:
       - id: prepare
-        uses: ayman2ppp2/opencode-reviewer@71c8d2a3a7b8353f6345ac16dc4f8e6572a7dcb7
+        uses: ayman2ppp2/opencode-reviewer@256050c4e478d75b758c2719a84b7473e112d8e8
         with:
           phase: prepare
           pr_number: ${{ inputs.pr_number }}
@@ -73,7 +73,7 @@ jobs:
         with:
           name: reviewer-source
           path: ${{ runner.temp }}/reviewer-data
-      - uses: ayman2ppp2/opencode-reviewer@71c8d2a3a7b8353f6345ac16dc4f8e6572a7dcb7
+      - uses: ayman2ppp2/opencode-reviewer@256050c4e478d75b758c2719a84b7473e112d8e8
         with:
           phase: infer
         env:
@@ -105,7 +105,7 @@ jobs:
         with:
           name: reviewer-result
           path: ${{ runner.temp }}/reviewer-data
-      - uses: ayman2ppp2/opencode-reviewer@71c8d2a3a7b8353f6345ac16dc4f8e6572a7dcb7
+      - uses: ayman2ppp2/opencode-reviewer@256050c4e478d75b758c2719a84b7473e112d8e8
         with:
           phase: publish
         env:
