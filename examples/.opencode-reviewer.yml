@@ -1,0 +1,10 @@
+model: opencode/deepseek-v4.1-flash-free
+language: English
+instructions: ''
+exclude: []
+maxFiles: 20
+maxSourceBytes: 100000
+maxFindings: 5
+timeoutSeconds: 240
+reviewDrafts: false
+allowPrivate: false
