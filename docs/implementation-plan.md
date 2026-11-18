@@ -2,6 +2,8 @@
 
 Status: proposed implementation plan. No reviewer code exists yet.
 
+Execution amendment. The user selected OpenCode's own free models and authorized GitHub access through `gh`. The implementation uses the pinned OpenCode V2 CLI rather than the embedded SDK. Its clean-environment CLI and gateway routing were verified directly. Gemini is no longer a setup prerequisite. `opencode/deepseek-v4.1-flash-free` is the only allowed inference model. Free availability is checked before requests. See `verification.md` for execution evidence and remaining limitations.
+
 ## 1. Define the outcome and limits
 
 Build one reusable reviewer that participating repositories run through GitHub Actions. Target CodeRabbit-style capabilities through separately verified milestones. Do not claim equivalent review quality or complete product parity.

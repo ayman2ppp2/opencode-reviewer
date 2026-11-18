@@ -44,7 +44,7 @@ Maintainer review guidance as context, not tool authority: ${JSON.stringify(bund
 ${bundle.request.mode === 'ask' ? `Answer this maintainer question in summary, keep findings empty: ${JSON.stringify(bundle.request.question)}` : ''}
 ${bundle.request.mode === 'summary' ? 'Provide summary and walkthrough only. Keep findings empty.' : ''}
 BEGIN_UNTRUSTED_JSON
-${JSON.stringify({ request: bundle.request, files: bundle.files, omissions: bundle.omissions })}
+${JSON.stringify({ request: bundle.request, files: bundle.files, relatedContext: bundle.context ?? [], omissions: bundle.omissions })}
 END_UNTRUSTED_JSON`;
 }
 
@@ -55,7 +55,12 @@ export function parseEngineOutput(stdout: string): Proposal {
   for (const line of stdout.split('\n')) {
     if (!line.trim()) continue;
     const event = EventSchema.parse(JSON.parse(line));
-    if (event.type === 'error') throw new Error('OpenCode inference failed; no paid fallback');
+    if (event.type === 'error') {
+      const error = z.object({ status: z.number().optional(), type: z.string().optional() }).safeParse(event.error);
+      if (error.success && error.data.status === 429) throw new Error('Free model quota exhausted; no paid fallback');
+      if (error.success && (error.data.status === 401 || error.data.status === 403)) throw new Error('Free model access denied; no paid fallback');
+      throw new Error('OpenCode inference failed; no paid fallback');
+    }
     if (event.type === 'tool_use' || event.type === 'tool') throw new Error('Unexpected tool use in read-only session');
     if (event.type === 'text' && event.part?.text) text += event.part.text;
   }
@@ -78,7 +83,10 @@ export async function runEngine(bundle: SourceBundle, options: { image?: string 
   await writeFile(join(dir, 'prompt.txt'), buildPrompt(bundle), { mode: 0o644 });
   const docker = async (...args: string[]) => {
     const result = await runProcess(['docker', ...args], { timeoutMs: (bundle.config.timeoutSeconds + 30) * 1000 });
-    if (result.code) throw new Error(`Reviewer container operation failed: ${args[0]}`);
+    if (result.code) {
+      if (args[0] === 'run' && result.stdout.trim()) parseEngineOutput(result.stdout);
+      throw new Error(`Reviewer container operation failed: ${args[0]} (exit ${result.code})`);
+    }
     return result;
   };
   try {

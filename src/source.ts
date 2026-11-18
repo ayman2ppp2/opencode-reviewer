@@ -3,6 +3,7 @@ import { parseDocument } from 'yaml';
 import { BundleSchema, ConfigSchema, PathSchema, RepoSchema, RequestSchema, ShaSchema,
   type Config, type GitHubClient, type ReviewRequest, type SourceBundle } from './domain';
 import { GhApiError } from './github';
+import { posix } from 'node:path';
 
 const PullSchema = z.object({
   number: z.number().int().positive(), title: z.string(), body: z.string().nullable(), draft: z.boolean(),
@@ -95,7 +96,8 @@ export function parseChangedLines(patch: string): number[] {
 }
 
 const sensitivePatterns = ['**/.env*', '**/*.{pem,key,p12,pfx}', '**/id_{rsa,dsa,ecdsa,ed25519}*',
-  '**/AGENTS.md', '**/.opencode/**', '**/opencode.json*', '**/.opencode-reviewer.y{ml,aml}', '**/.git/**'];
+  '**/AGENTS.md', '**/.opencode/**', '**/opencode.json*', '**/.opencode-reviewer.y{ml,aml}', '**/.git/**',
+  '**/{node_modules,vendor,dist,build,coverage}/**', '**/{package-lock.json,bun.lock,bun.lockb,yarn.lock,pnpm-lock.yaml}'];
 
 export async function collectSource(client: GitHubClient, request: ReviewRequest, config: Config): Promise<SourceBundle> {
   RequestSchema.parse(request);
@@ -138,6 +140,31 @@ export async function collectSource(client: GitHubClient, request: ReviewRequest
     }
     bytes += patchBytes + Buffer.byteLength(content);
     bundle.files.push({ path: file.filename, status: file.status, patch: file.patch, content, changedLines });
+  }
+  const candidates = new Set<string>();
+  for (const file of bundle.files) {
+    for (const match of file.content.matchAll(/(?:from\s*|import\s*\(|require\s*\()\s*['"](\.[^'"\n]+)['"]/g)) {
+      if (!match[1] || candidates.size >= 10) break;
+      const path = posix.normalize(posix.join(posix.dirname(file.path), match[1]));
+      if (PathSchema.safeParse(path).success && !path.split('/').some((p) => /[%{}]/.test(p)) && !globs.some((glob) => glob.match(path))) candidates.add(path);
+    }
+  }
+  let attempts = 0;
+  for (const candidate of candidates) {
+    if (bundle.context?.length === 5 || bytes >= config.maxSourceBytes || attempts >= 15) break;
+    const paths = posix.extname(candidate) ? [candidate] : [`${candidate}.ts`, `${candidate}.tsx`, `${candidate}.js`, `${candidate}/index.ts`];
+    for (const path of paths) {
+      if (seen.has(path) || globs.some((glob) => glob.match(path)) || attempts >= 15) continue;
+      attempts++;
+      try {
+        const content = decodeContents(await client.request('GET', contentsPath(request, path, request.headSha)), config.maxSourceBytes - bytes);
+        bundle.context ??= [];
+        bundle.context.push({ path, content });
+        seen.add(path);
+        bytes += Buffer.byteLength(content);
+        break;
+      } catch { /* Related context is optional and never changes which diff files were reviewed. */ }
+    }
   }
   return BundleSchema.parse(bundle);
 }

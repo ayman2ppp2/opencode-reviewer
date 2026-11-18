@@ -1,0 +1,88 @@
+name: OpenCode free review
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: PR number for manual dispatch.
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number.
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: opencode-reviewer-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      eligible: ${{ steps.prepare.outputs.eligible }}
+    steps:
+      - id: prepare
+        uses: ayman2ppp2/opencode-reviewer@443d9ede9fce1f40e3124c45d6e0fc966bc2e8bc
+        with:
+          phase: prepare
+          pr_number: ${{ inputs.pr_number }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.prepare.outputs.eligible == 'true'
+        with:
+          name: reviewer-source
+          path: ${{ runner.temp }}/reviewer-data/bundle.json
+          retention-days: 1
+          if-no-files-found: error
+
+  infer:
+    needs: prepare
+    if: needs.prepare.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: reviewer-source
+          path: ${{ runner.temp }}/reviewer-data
+      - uses: ayman2ppp2/opencode-reviewer@443d9ede9fce1f40e3124c45d6e0fc966bc2e8bc
+        with:
+          phase: infer
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reviewer-result
+          path: ${{ runner.temp }}/reviewer-data/result.json
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, infer]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: reviewer-source
+          path: ${{ runner.temp }}/reviewer-data
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: reviewer-result
+          path: ${{ runner.temp }}/reviewer-data
+      - uses: ayman2ppp2/opencode-reviewer@443d9ede9fce1f40e3124c45d6e0fc966bc2e8bc
+        with:
+          phase: publish
+        env:
+          GH_TOKEN: ${{ github.token }}

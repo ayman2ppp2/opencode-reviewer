@@ -128,4 +128,12 @@ describe('source collection', () => {
     const result = await collectSource(fixture({ pr: { ...pull, changed_files: 2 } }).client, request, ConfigSchema.parse({}));
     expect(result.omissions).toEqual(['File listing incomplete: received 1 of 2 changed files']);
   });
+  test('fetches bounded relative-import context without permitting context-only inline findings', async () => {
+    const source = "import { helper } from './helper';\nnew\n";
+    const { client } = fixture({ source: contents(source) });
+    const result = await collectSource(client, request, ConfigSchema.parse({}));
+    expect(result.context?.map((entry) => entry.path)).toContain('src/helper.ts');
+    expect(result.files.map((entry) => entry.path)).toEqual(['src/file.ts']);
+    expect(result.context?.length).toBeLessThanOrEqual(5);
+  });
 });

@@ -53,6 +53,7 @@ export const BundleSchema = z.object({
   config: ConfigSchema,
   files: z.array(SourceFileSchema).max(50),
   omissions: z.array(z.string().max(1000)).max(10000),
+  context: z.array(z.object({ path: PathSchema, content: z.string().max(500000) }).strict()).max(5).optional(),
 }).strict();
 export type SourceBundle = z.infer<typeof BundleSchema>;
 
