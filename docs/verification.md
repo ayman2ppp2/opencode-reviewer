@@ -23,6 +23,10 @@ The local inference fixture proves CLI integration and routing. It does not prov
 
 Successful real-model analysis remains blocked by free access availability. No paid provider or account credit was used. The quota is an external prerequisite, not a passing implementation test.
 
+A live test through the laptop relay is recorded at https://github.com/ayman2ppp2/opencode-reviewer/actions/runs/44403270919. The workflow log confirms `REVIEWER_EGRESS_PROFILE: laptop` with relay credentials present and Android credentials empty. The relay stayed alive and its authenticated health endpoint returned 200. The result was still `blocked` with `Free model quota exhausted`.
+
+That result is evidence that the 429 is not purely runner-IP based, or that the same OpenCode account quota applies through both paths. The relay itself worked. It did not change the outcome. There is no automatic fallback to Android or direct egress.
+
 ## Repeat local verification
 
 ```sh
